@@ -29,19 +29,29 @@ description: >
 
 ### Step 1 扫描（只读）
 
+**macOS（用 shell 重定向写入 `/tmp/`）**：
 ```bash
 python3 scripts/scan.py > /tmp/storage_scan.json
 ```
+
+**Windows（推荐用 `--output-dir` 直接写文件，避免 shell 重定向被 Agent 沙箱拦截）**：
+```bash
+python scripts/scan.py --output-dir <工作目录>     # 自动生成 scan_YYYYMMDD_HHMMSS.json
+```
+例如 `--output-dir D:\storage-reports`，文件会落在 `D:\storage-reports\scan_20260720_181715.json`。脚本会打印完整路径供后续步骤引用。
+也可用 `--output` 指定精确文件名：`python scripts/scan.py -o /tmp/storage_scan.json`。
 
 `scan.py` 自动识别系统（`sys.platform`）：
 - **macOS**：扫 home、library、caches、containers、group_containers、app_support、applications、downloads、dev_caches，用 `du` 算大小。
 - **Windows**：扫 user_profile、appdata_local、appdata_roaming、temp、downloads、program_files(_x86)、dev_caches，用 `os.scandir` 算大小；`system.disks` 含所有盘符。
 
+不加 `--output` / `--output-dir` 时，结果输出到 stdout（和原来一样）。
+
 输出 JSON：`system`（系统/磁盘信息，含 `disk_name` 主盘名 + `disks` 全部盘）+ `groups`（各组子目录大小，已降序、过滤 50MB 以下）。扫描较慢，耐心等。读不到的目录标 `denied`，需在报告里列出并提示遗漏体量。
 
 ### Step 2 分析与分级
 
-先看 `system.os` 判断系统，读对应的数据布局参考：macOS 读 [references/macos.md](references/macos.md)，Windows 读 [references/windows.md](references/windows.md)（讲该系统东西存哪、怎么辨认、归哪一级）。然后读 `/tmp/storage_scan.json` 做这几件事：
+先看 `system.os` 判断系统，读对应的数据布局参考：macOS 读 [references/macos.md](references/macos.md)，Windows 读 [references/windows.md](references/windows.md)（讲该系统东西存哪、怎么辨认、归哪一级）。然后读 Step 1 产出的扫描 JSON（路径见脚本打印的输出）做这几件事：
 
 1. **挑 Top 5** 占用大户，判定类型（系统资产/应用本体/应用数据/应用缓存/开发缓存/用户文件/媒体内容/下载内容/虚拟机镜像/回收站/其他）。
 2. **识别"神秘大目录"**：UUID 命名的 Container、不明的隐藏目录，要追查它属于哪个 App、装的是什么（例如某 97GB 的 UUID Container 实为 Bilibili 离线视频缓存）。必要时 `ls`/`du` 深入一层看清楚，但仍只读。
@@ -62,13 +72,18 @@ python3 scripts/scan.py > /tmp/storage_scan.json
 
 **默认用一键删除模式（`server.py`）打开报告**，因为这个 skill 的核心价值就是网页上能直接清理：
 ```bash
-python3 scripts/server.py /tmp/storage_analysis.json   # 自动开浏览器，Ctrl+C 停
+python3 scripts/server.py <analysis.json>   # 自动开浏览器，Ctrl+C 停
 ```
+
+**server.py 会阻塞当前 shell**，想保持对话可用：
+- **macOS/Linux**：`python3 scripts/server.py <analysis.json> &`
+- **Windows PowerShell**：`Start-Process -NoNewWindow python -ArgumentList "scripts/server.py", "<analysis.json>" -WorkingDirectory "<skill 目录>"`
+
 `server.py` 起在 127.0.0.1 + 随机端口 + 随机 token。🟢 项给「移到废纸篓」(可逆) +「直接删除」(立即释放、不可逆)；🟡 项给「在访达打开」+（有安全子路径时）「移到废纸篓」。**安全模型——三套白名单，权限从严到宽**：`rm` 只允许绿灯 `trash_paths`；`trash` 允许绿灯+橙灯 `trash_paths`（橙灯永远不能 rm）；`open`（在文件管理器打开，非破坏性）允许上述全部 + 橙灯真实 `path`。所有请求 realpath 校验 + 必须在 $HOME 内 + token + Host 校验，每次点击浏览器先 confirm。osascript/SHFileOperationW 入废纸篓，macOS 首次弹访达自动化授权点允许即可。
 
 仅当用户明确只想要一份可分享/留存的只读文件时，才用静态模式（无删除按钮，因为 `file://` 打开的页面碰不到文件系统）：
 ```bash
-python3 scripts/build_report.py /tmp/storage_analysis.json ~/Desktop/storage-report.html && open ~/Desktop/storage-report.html
+python3 scripts/build_report.py <analysis.json> ~/Desktop/storage-report.html && open ~/Desktop/storage-report.html
 ```
 
 **排障：网页上没有删除/移废纸篓按钮** = 要么开的是静态报告（改用 `server.py`），要么 🟢 项漏了 `trash_paths`（补上重启服务）。
@@ -95,7 +110,7 @@ pills 只渲染解析出的纯数字（如"约 5.5 GB"），不显示数据里�
 ## 平台状态
 
 - **macOS**：完整实现并实测（扫描 / 报告 / 一键删除全验证过）。
-- **Windows**：代码已写（`scan.py` 的 `scan_windows`、`server.py` 的 `_trash_windows` 走 `SHFileOperationW`），但**未在真实 Windows 上实测**。首次在 Windows 跑要核对：目标目录路径、`os.scandir` 大小、回收站删除是否正常。多盘符已支持（主盘分段条 + 其他盘列表）。
+- **Windows**：已实测（扫描 / 报告 / 回收站删除 / 多盘符均可用）。注意：`scan.py` 推荐用 `--output-dir` 而非 shell `>` 重定向（部分 Agent 沙箱会拦截重定向写入）；`server.py` 用 `Start-Process` 后台启动以免阻塞对话。
 
 ## 长期优化建议素材（写进报告 summary.long_term）
 
