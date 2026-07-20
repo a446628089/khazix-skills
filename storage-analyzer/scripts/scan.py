@@ -283,6 +283,14 @@ def scan_windows():
 
 # ======================================================================
 def main():
+    import argparse
+    parser = argparse.ArgumentParser(description="只读存储扫描器")
+    parser.add_argument("--output", "-o", type=str, default=None,
+                        help="直接写入 JSON 文件（不输出到 stdout）")
+    parser.add_argument("--output-dir", "-d", type=str, default=None,
+                        help="输出目录，自动生成 scan_YYYYMMDD_HHMMSS.json")
+    args = parser.parse_args()
+
     started = time.time()
     if sys.platform == "darwin":
         system, groups = scan_macos()
@@ -299,7 +307,20 @@ def main():
         "groups": groups,
         "scan_seconds": round(time.time() - started, 1),
     }
-    print(json.dumps(data, ensure_ascii=False, indent=2))
+
+    if args.output_dir:
+        os.makedirs(args.output_dir, exist_ok=True)
+        ts = time.strftime("%Y%m%d_%H%M%S")
+        out_path = os.path.join(args.output_dir, f"scan_{ts}.json")
+    elif args.output:
+        out_path = args.output
+    else:
+        print(json.dumps(data, ensure_ascii=False, indent=2))
+        return
+
+    with open(out_path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+    print(out_path, flush=True)  # 返回文件路径给调用方
 
 
 if __name__ == "__main__":
