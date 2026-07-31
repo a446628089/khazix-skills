@@ -71,74 +71,59 @@ jobs:
         if: steps.guard.outputs.skip == 'false'
         run: |
           set -euo pipefail
+          # runner 未配置 git 身份，git merge 创建 commit 时会因 empty ident 失败（exit 128），
+          # 必须先显式配置；使用 GitHub 官方机器人身份，使合并提交归属清晰
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           # 保留 fork 自身 commit 历史，采用 merge 而非 rebase（避免改写历史）
           git merge --no-edit refs/remotes/upstream/main
           # 使用 actions/checkout 注入的 GITHUB_TOKEN 凭据推回 fork 的 main
           git push origin main
-
-      - name: Debug token permissions
-        if: always()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            // 诊断用：无论同步成功与否，都打印 GITHUB_TOKEN 对当前仓库的实际权限，
-            // 用于确认 fork 仓库 + workflow_dispatch 场景下 token 是否真的具备 contents:write。
-            const { data } = await github.rest.repos.get({
-              owner: context.repo.owner,
-              repo: context.repo.repo
-            });
-            console.log('event=' + context.eventName + ' repo=' + context.repo.owner + '/' + context.repo.repo);
-            console.log('TOKEN PUSH PERM: ' + data.permissions.push);
-            console.log('TOKEN ADMIN PERM: ' + data.permissions.admin);
-            console.log('TOKEN MAINTAIN PERM: ' + data.permissions.maintain);
-
-      - name: Debug push dry-run
-        if: always()
-        run: |
-          set +e
-          echo "=== git push dry-run (真实认证/网络报错会打印在这里) ==="
-          git push --dry-run origin main 2>&1
-          echo "DRY_RUN_EXIT=$?"
 
       - name: Open issue on sync failure
         if: failure()
         uses: actions/github-script@v7
         with:
           script: |
-            const repo = context.repo;
-            const title = 'Auto sync from upstream failed';
-            const { data: issues } = await github.rest.issues.listForRepo({
-              owner: repo.owner,
-              repo: repo.repo,
-              state: 'open'
-            });
-            const existing = issues.find(i => i.title === title);
-            const body = [
-              '定时同步上游的 workflow 运行失败。',
-              '',
-              '运行日志：https://github.com/' + repo.owner + '/' + repo.repo + '/actions/runs/' + context.runId,
-              '',
-              '常见原因与处理方式：',
-              '1. 合并冲突（fork 独有改动与上游冲突）：请在本地手动解决后推送',
-              '```',
-              'git fetch upstream && git merge upstream/main',
-              'git push origin main',
-              '```',
-              '2. 上游仓库被改名/删除：请检查并更新 workflow 中的 UPSTREAM_REPO 配置。',
-              '3. 若冲突来自 .github/workflows/sync-upstream.yml 本身，请保留本仓库（fork）版本。'
-            ].join('\n');
-            if (existing) {
-              await github.rest.issues.update({
+            // fork 仓库默认禁用 Issues，此时 API 会抛错；失败通知仅是辅助手段，不允许阻塞诊断
+            try {
+              const repo = context.repo;
+              const title = 'Auto sync from upstream failed';
+              const { data: issues } = await github.rest.issues.listForRepo({
                 owner: repo.owner,
                 repo: repo.repo,
-                issue_number: existing.number,
-                body: body
+                state: 'open'
               });
-            } else {
-              await github.rest.issues.create({
-                owner: repo.owner,
-                repo: repo.repo,
-                title: title,
-                body: body
-              });
+              const existing = issues.find(i => i.title === title);
+              const body = [
+                '定时同步上游的 workflow 运行失败。',
+                '',
+                '运行日志：https://github.com/' + repo.owner + '/' + repo.repo + '/actions/runs/' + context.runId,
+                '',
+                '常见原因与处理方式：',
+                '1. 合并冲突（fork 独有改动与上游冲突）：请在本地手动解决后推送',
+                '```',
+                'git fetch upstream && git merge upstream/main',
+                'git push origin main',
+                '```',
+                '2. 上游仓库被改名/删除：请检查并更新 workflow 中的 UPSTREAM_REPO 配置。',
+                '3. 若冲突来自 .github/workflows/sync-upstream.yml 本身，请保留本仓库（fork）版本。'
+              ].join('\n');
+              if (existing) {
+                await github.rest.issues.update({
+                  owner: repo.owner,
+                  repo: repo.repo,
+                  issue_number: existing.number,
+                  body: body
+                });
+              } else {
+                await github.rest.issues.create({
+                  owner: repo.owner,
+                  repo: repo.repo,
+                  title: title,
+                  body: body
+                });
+              }
+            } catch (e) {
+              console.warn('Unable to open failure issue (repository has Issues disabled?): ' + e.message);
             }
