@@ -1,0 +1,120 @@
+name: Sync from upstream
+
+on:
+  # 每 6 小时自动同步一次（GitHub Actions 的 cron 使用 UTC 时区）
+  # 注意：若 fork 仓库连续 60 天无任何 commit 活动，GitHub 会自动禁用定时触发，
+  # 此时需在 Actions 页面手动触发一次 workflow_dispatch 保活。
+  schedule:
+    - cron: '0 */6 * * *'
+  # 支持在 Actions 页面手动触发
+  workflow_dispatch:
+
+permissions:
+  # GITHUB_TOKEN 默认只读，必须显式声明写权限才能 push 回 fork
+  contents: write
+  # 同步失败时创建 issue，确保仓库拥有者能收到失败通知
+  issues: write
+
+# 定时与手动触发共用同一 group，串行执行，防止并发写 main 造成竞争
+concurrency:
+  group: sync-upstream
+  cancel-in-progress: false
+
+env:
+  # 上游仓库（集中在此配置，上游改名/更换时只需改这一处）
+  UPSTREAM_REPO: KKKKhazix/khazix-skills
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout fork main branch
+        uses: actions/checkout@v4
+        with:
+          # 需要完整历史才能计算 merge-base，判断是否落后于上游
+          fetch-depth: 0
+          ref: main
+
+      - name: Fetch upstream
+        run: |
+          set -euo pipefail
+          # 幂等添加 upstream remote（存在则跳过，避免 || true 掩盖真实错误）
+          if ! git remote get-url upstream >/dev/null 2>&1; then
+            git remote add upstream "https://github.com/${{ env.UPSTREAM_REPO }}.git"
+          fi
+          # `+` 前缀允许强制更新本地引用：即使上游 force-push 也能 fetch 成功
+          git fetch --no-tags upstream +main:refs/remotes/upstream/main
+
+      - name: Guard against upstream workflow injection
+        id: guard
+        run: |
+          set -euo pipefail
+          # 若上游 main 已是本分支祖先，说明无需同步
+          if git merge-base --is-ancestor refs/remotes/upstream/main HEAD; then
+            echo "::notice::Already up to date with upstream, nothing to do."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # 安全护栏：上游若改动 .github/workflows/（除本文件外），
+          # 中止自动合并，防止恶意/意外 workflow 文件随上游进入 fork 并以本仓库 token 执行。
+          changed="$(git diff --name-only HEAD refs/remotes/upstream/main -- .github/workflows/ \
+            | grep -v '^\.github/workflows/sync-upstream\.yml$' || true)"
+          if [ -n "$changed" ]; then
+            echo "::error::Upstream modified untrusted workflow files, blocking auto-merge:"
+            printf '%s\n' "$changed"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+
+      - name: Merge upstream and push
+        if: steps.guard.outputs.skip == 'false'
+        run: |
+          set -euo pipefail
+          # 保留 fork 自身 commit 历史，采用 merge 而非 rebase（避免改写历史）
+          git merge --no-edit refs/remotes/upstream/main
+          # 使用 actions/checkout 注入的 GITHUB_TOKEN 凭据推回 fork 的 main
+          git push origin main
+
+      - name: Open issue on sync failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const repo = context.repo;
+            const title = 'Auto sync from upstream failed';
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: repo.owner,
+              repo: repo.repo,
+              state: 'open'
+            });
+            const existing = issues.find(i => i.title === title);
+            const body = [
+              '定时同步上游的 workflow 运行失败。',
+              '',
+              '运行日志：https://github.com/' + repo.owner + '/' + repo.repo + '/actions/runs/' + context.runId,
+              '',
+              '常见原因与处理方式：',
+              '1. 合并冲突（fork 独有改动与上游冲突）：请在本地手动解决后推送',
+              '```',
+              'git fetch upstream && git merge upstream/main',
+              'git push origin main',
+              '```',
+              '2. 上游仓库被改名/删除：请检查并更新 workflow 中的 UPSTREAM_REPO 配置。',
+              '3. 若冲突来自 .github/workflows/sync-upstream.yml 本身，请保留本仓库（fork）版本。'
+            ].join('\n');
+            if (existing) {
+              await github.rest.issues.update({
+                owner: repo.owner,
+                repo: repo.repo,
+                issue_number: existing.number,
+                body: body
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: repo.owner,
+                repo: repo.repo,
+                title: title,
+                body: body
+              });
+            }
