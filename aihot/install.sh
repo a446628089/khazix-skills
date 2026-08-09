@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# AI HOT Agent Skill installer.
+# AIHOT Agent Skill installer.
 # Downloads and validates the complete runtime package before one directory swap.
 
 set -euo pipefail
@@ -34,7 +34,7 @@ Examples:
 The installer never uses sudo. It downloads the complete runtime package,
 validates every SHA-256, then replaces one explicit target directory.
 
-If an older AI HOT Skill ran this script without a target, do not guess or
+If an older AIHOT Skill ran this script without a target, do not guess or
 retry with sudo. Open https://aihot.virxact.com/aihot-skill/README.md and give
 its recommended update prompt to the Agent that owns the current Skill folder.
 EOF
@@ -70,7 +70,7 @@ validate_target_path() {
       fail "target contains a different Skill and will not be overwritten: $INSTALL_DIR"
     }
   elif [[ -d "$INSTALL_DIR" ]] && [[ -n "$(ls -A "$INSTALL_DIR")" ]]; then
-    fail "target is a non-empty directory without an AI HOT SKILL.md: $INSTALL_DIR"
+    fail "target is a non-empty directory without an AIHOT SKILL.md: $INSTALL_DIR"
   fi
 }
 
@@ -223,7 +223,7 @@ if [[ "$SHARED_TARGET" -eq 1 ]]; then
   done
 
   if [[ "$LEGACY_COUNT" -gt 0 && "$MIGRATE_LEGACY" -eq 0 ]]; then
-    echo "[ERR] legacy AI HOT Skill copies found; refusing to create a duplicate:" >&2
+    echo "[ERR] legacy AIHOT Skill copies found; refusing to create a duplicate:" >&2
     for ((i = 0; i < LEGACY_COUNT; i++)); do
       echo "  - ${LEGACY_PATHS[$i]}" >&2
     done
@@ -242,7 +242,7 @@ mkdir -p "$PACKAGE_DIR"
 trap restore_on_failure EXIT
 
 echo ""
-echo "Installing AI HOT Agent Skill"
+echo "Installing AIHOT Agent Skill"
 echo "  target: $TARGET"
 echo "  path:   $INSTALL_DIR"
 echo ""
@@ -339,4 +339,4 @@ echo "Next: restart your Agent or start a new conversation, then ask:"
 echo "  过去 24 小时 AI 圈最重要的 5 件事是什么？"
 echo ""
 echo "Success means the Agent finds exactly one aihot Skill, states the time window,"
-echo "and links titles to AI HOT."
+echo "and links titles to AIHOT."
