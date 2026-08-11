@@ -4,7 +4,7 @@
 
 基础能力长期保持匿名、只读、无需 API Key。Skill 1.x 使用稳定的 `/api/v1/*` 契约；后端抓取、评分、排序、缓存和模型可以继续迭代，用户无需因此更新 Skill。
 
-AIHOT Skill 1.4.1 遵循公开使用规则 1.0：个人非商业、公益非商业和组织内部使用免费；任何面向外部的商业产品、收费服务、客户交付、代理接口、数据转售、公开镜像或批量公开再分发，须事先取得书面授权。
+AIHOT Skill 1.5.1 遵循公开使用规则 1.0：个人非商业、公益非商业和组织内部使用免费；任何面向外部的商业产品、收费服务、客户交付、代理接口、数据转售、公开镜像或批量公开再分发，须事先取得书面授权。
 
 ## 安装前可审阅
 
@@ -25,6 +25,12 @@ bash <(curl -fsSL https://aihot.virxact.com/aihot-skill/install.sh) --target gem
 bash <(curl -fsSL https://aihot.virxact.com/aihot-skill/install.sh) --target copilot
 bash <(curl -fsSL https://aihot.virxact.com/aihot-skill/install.sh) --target opencode
 ```
+
+安装器会在本地生成 `.aihot-actor-id`（权限 `0600`），更新时保留。它是可轮换的随机 UUID，
+仅用于把同一直接消费实例跨网页、Skill、MCP、RSS 与 API 去重，不是账号、API Key 或授权。
+从 AIHOT 接入页复制命令时可用 `--actor <uuid-v4>` 与其它渠道复用同一随机假名标识；不传也能正常无账号使用。
+如不希望参与跨渠道分析，执行同一安装命令并追加 `--no-actor`。安装器会保存本地退出标记，
+后续正常更新与旧目录迁移都不会重新生成 Actor；以后显式传入 `--actor <uuid-v4>` 才会重新加入。
 
 Claude Code 使用自己的目录：
 
@@ -53,6 +59,8 @@ references/errors.md
 ```
 
 人类说明 `README.md` 不会被放进 Agent 的 Skill 安装目录。
+安装器还会在本地生成只忽略 `.aihot-actor-id` 与 `.aihot-actor-disabled` 的 `.gitignore`；
+它不从公网下载，避免项目级安装时把本地假名状态误提交进 Git。
 
 ## 旧目录迁移
 
