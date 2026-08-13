@@ -73,8 +73,9 @@
 - `category`
 - `score`
 - `selected`
+- `reason`
 
-其中 `originalTitle`、`summary`、`publishedAt`、`category` 和 `score` 的键始终存在，但值可以是 `null`；展示前必须判空。`id`、`title`、`source.name`、`links.aihot`、`links.original`、`discoveredAt` 和 `selected` 为非空值。响应还可能带可选的 `attribution`，客户端不得依赖它一定存在，也不得因未来新增未知字段而报错。`attribution` 只用于来源追溯，不能替代外部商业用途所需的书面授权。`page.count` 是本页条数，不是全库总数。
+其中 `originalTitle`、`summary`、`publishedAt`、`category`、`score` 和 `reason` 的键始终存在，但值可以是 `null`；展示前必须判空。`id`、`title`、`source.name`、`links.aihot`、`links.original`、`discoveredAt` 和 `selected` 为非空值。`reason` 是网页「推荐理由」：精选且有面向读者的理由时为字符串，未精选或没有理由时为 `null`。精选 snapshot／changes 当前不含这个字段。响应还可能带可选的 `attribution`，客户端不得依赖它一定存在，也不得因未来新增未知字段而报错。`attribution` 只用于来源追溯，不能替代外部商业用途所需的书面授权。`page.count` 是本页条数，不是全库总数。
 
 示例：
 
@@ -113,7 +114,7 @@ GET /api/v1/dailies/2026-07-24
 
 ### 正文与周期报告边界
 
-- `items` 只返回标题、摘要、来源、时间、评分和链接，不返回正文，也没有 `/api/v1/items/{id}`。用户要深入阅读时提供 `links.aihot` 和 `links.original`，不要抓网页或全文 RSS 冒充单篇正文 API。
+- `items` 只返回标题、摘要、推荐理由、来源、时间、评分和链接，不返回正文，也没有 `/api/v1/items/{id}`。用户要深入阅读时提供 `links.aihot` 和 `links.original`，不要抓网页或全文 RSS 冒充单篇正文 API。
 - AIHOT 编辑成品周报与月报目前只有 `/weekly` 和 `/monthly` 网页，没有 v1、Skill 或 RSS 端点。“最近一周精选”仍是滚动 7 天 items 查询，不得称为正式周报。
 
 ### 完整精选同步
