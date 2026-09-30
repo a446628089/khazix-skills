@@ -161,6 +161,8 @@ storage analysis
 
 Lets any SKILL.md-supporting agent pull AI HOT's daily report and all AI news from [aihot.news](https://aihot.news) with one natural Chinese sentence. No API key, no MCP server config.
 
+**Install once, never update again**: the skill only asks and relays; the querying and formatting happen on aihot.news, so new abilities arrive on their own. If you installed an older version, update one last time.
+
 **What it can do**
 
 - Pull today's or a specific date's AI HOT daily report (pre-packaged by topic)
@@ -170,7 +172,7 @@ Lets any SKILL.md-supporting agent pull AI HOT's daily report and all AI news fr
 - Pull by category (models / products / industry / papers / tips)
 - Pull by time window (past 24 hours and last 7 days are natively supported)
 - Keyword / company / topic search ("recent OpenAI releases", "Sora-related", "RAG papers")
-- **Mirror the entire current selection locally**, then receive only the changes
+- **Follow a hot story from start to finish** (latest development, report timeline and AI digest)
 
 **How to trigger** (Chinese — the underlying API is Chinese-curated)
 
@@ -180,7 +182,7 @@ Lets any SKILL.md-supporting agent pull AI HOT's daily report and all AI news fr
 看一下 5 月 6 号的 AI 日报
 最近一周的 AI 论文
 最近 OpenAI 有什么发布
-把 AI HOT 当前全部精选同步到本地
+现在最热的那件事，来龙去脉是什么
 ```
 
 → [SKILL.md](./aihot/SKILL.md) · [aihot.news](https://aihot.news) · [Integration guide](https://aihot.news/agent)

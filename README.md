@@ -161,6 +161,8 @@ storage analysis
 
 让支持 SKILL.md 的 Agent 用最自然的中文一句话拿到 [aihot.news](https://aihot.news) 每天的 AI HOT 日报和全部 AI 动态。无需 API Key、无需配 MCP server。
 
+**装一次就好，以后不用再更新**：Skill 只负责提问和转述，查询和整理都在 aihot.news 服务端完成，新能力自动生效。装过旧版的最后更新一次即可。
+
 **它能做什么**
 
 - 拉今日 / 指定日期的 AI HOT 日报（按主题打包好的成品）
@@ -170,7 +172,7 @@ storage analysis
 - 按分类拉条目（模型 / 产品 / 行业 / 论文 / 技巧）
 - 按时间窗拉（原生支持过去 24 小时和最近 7 天）
 - 关键词 / 公司 / 主题搜索（"OpenAI 最近发的"、"Sora 相关"、"RAG 论文"）
-- **把当前全部精选同步到本地**，之后只接收变化
+- **看某个热点的来龙去脉**（最新进展、报道时间线和 AI 综述）
 
 **怎么触发**
 
@@ -180,7 +182,7 @@ storage analysis
 看一下 5 月 6 号的 AI 日报
 最近一周的 AI 论文
 最近 OpenAI 有什么发布
-把 AI HOT 当前全部精选同步到本地
+现在最热的那件事，来龙去脉是什么
 ```
 
 → [SKILL.md](./aihot/SKILL.md) · [aihot.news](https://aihot.news) · [接入指南](https://aihot.news/agent)
