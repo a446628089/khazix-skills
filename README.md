@@ -27,7 +27,7 @@
 | 名字 | 一句话 | 讲解 |
 |---|---|---|
 | 🧭 [**leader（领导）**](#-leader领导) | 帮你把一句模糊的想法定义成一个清晰的**目标**，让 AI 拿着自己跑几个小时到完成 | — |
-| 💽 [**storage-analyzer（清理垃圾）**](#-storage-analyzer清理垃圾) | 一句话扫描 Mac / Windows 整机磁盘，三色分级给清理决策，网页上一键移废纸篓 | [公众号文章](https://mp.weixin.qq.com/s/NyOMIlOD986OC4SI9vmxlA) |
+| 💽 [**storage-analyzer（清理垃圾）**](#-storage-analyzer清理垃圾) | 一句话扫描 Mac / Windows / Linux 整机磁盘，三色分级给清理决策，网页上一键移废纸篓 | [公众号文章](https://mp.weixin.qq.com/s/NyOMIlOD986OC4SI9vmxlA) |
 | 🔥 [**aihot（AI HOT 资讯查询）**](#-aihotai-hot-资讯查询) | 让 Agent 用一句话拿到 aihot.news 每天的 AI HOT 日报和全部 AI 动态，无需 API Key | [aihot.news](https://aihot.news) |
 | 🧹 [**neat-freak（洁癖）**](#-neat-freak洁癖) | 干完活跑一下 `/neat`，自动对齐项目文档、CLAUDE.md、Agent 记忆，并审计规则有没有被执行 | [公众号文章](https://mp.weixin.qq.com/s/tg1wd-iN2gWHWhXdY0faeg) |
 | 🔭 [**hv-analysis（横纵分析法）**](#-hv-analysis横纵分析法) | 想搞懂一个产品/公司/概念是怎么回事，丢给它，给你一份万字 PDF 研究报告 | [公众号文章](https://mp.weixin.qq.com/s/Y_uRMYBmdLWUPnz_ac7jWA) |
@@ -45,7 +45,38 @@
 
 把 `<skill-name>` 换成你想装的那个，比如 `neat-freak`、`hv-analysis`、`khazix-writer`。Agent 会自己 clone 到对应目录，不用你操心路径。
 
-你的 Agent 不支持 Skill 也没关系：把对应目录的 `SKILL.md` 全文下载下来，当成项目规则文件（或直接贴进对话）让 Agent 照着执行，效果一致。
+安装时保留整个 Skill 目录，包括 `references/`、`scripts/`、`assets/` 和 `agents/`（如有）。只粘贴 `SKILL.md` 可以参考方法，但不能替代配套脚本和资源。普通聊天模型没有文件或联网工具时，无法完成本机扫描、实时研究或生成文件；请用具备相应工具的 Agent。搜索工具不限模型或厂商。
+
+手动安装就把整个目录放进 Agent 读取的 skills 目录：
+
+| 工具 | 所有项目可用 | 只在某个项目里用 |
+|---|---|---|
+| Claude Code | `~/.claude/skills/<skill-name>/` | `.claude/skills/<skill-name>/` |
+| Codex、Gemini CLI、GitHub Copilot 等 | `~/.agents/skills/<skill-name>/` | `.agents/skills/<skill-name>/` |
+
+也可以把全部六个 Skill 当成一个插件装，以后跟着版本更新。Claude Code 里输入：
+
+```text
+/plugin marketplace add KKKKhazix/khazix-skills
+/plugin install khazix-skills@khazix-skills
+```
+
+更新：在 `/plugin` 的 Installed 里选 khazix-skills 点 Update now，或在终端运行 `claude plugin update khazix-skills@khazix-skills`。第三方插件目录默认不自动更新，想自动更新就在 `/plugin` 的 Marketplaces 里选 khazix-skills，打开 Enable auto-update。
+
+Codex 在终端运行：
+
+```bash
+codex plugin marketplace add KKKKhazix/khazix-skills
+codex plugin add khazix-skills@khazix-skills
+```
+
+更新：`codex plugin marketplace upgrade khazix-skills`。
+
+插件方式装的 Skill 带前缀，例如 `khazix-skills:leader`。插件和手动复制只留一种，避免同一个 Skill 出现两份。
+
+固定版本和完整下载包见 [Releases](https://github.com/KKKKhazix/khazix-skills/releases)。第三方市场可能滞后或漏带资源，完整内容以此仓库和 Release 为准。
+
+本仓库目前维护下面列出的六个 Skill，不分发旧的 skill-manage／自演进管理器三件套。请不要把旧教程中的名称当成当前安装目录。
 
 ---
 
@@ -62,7 +93,7 @@
 
 **它只解决一件事：帮你定义目标。**
 
-把你脑子里那句模模糊糊、自己都还没想清楚的需求，变成一份目标任务书——粘进目标模式（Claude Code 的 `/goal`、Codex 的目标模式）就能让 AI 独立跑几个小时到完成。你全程只做一次复制粘贴。
+把你脑子里那句模模糊糊、自己都还没想清楚的需求，变成一份目标任务书——粘进目标模式（Claude Code 和 Codex 都是 `/goal`）就能让 AI 独立跑几个小时到完成。你全程只做一次复制粘贴。
 
 **为什么是「目标」**
 
@@ -94,7 +125,7 @@ Goal 告诉 AI 往哪走，Harness 告诉它哪些路不许走。**没有 Harnes
 
 **怎么用**
 
-跟它说一句想法（下面任意一句都能触发），它先实测调研，再问你最多 5 个必须你拍板的问题，然后写出任务书。全程约 12 分钟。
+跟它说一句想法（下面任意一句都能触发），它先实测调研，再问你最多 5 个必须你拍板的问题，然后写出任务书。信息足够时可以不提问，无法查明且会改变范围或授权的决定才问。
 
 ```
 帮我给 agent 写个目标
@@ -103,7 +134,7 @@ Goal 告诉 AI 往哪走，Harness 告诉它哪些路不许走。**没有 Harnes
 让 agent 自己跑这个项目
 ```
 
-产出是纯 Markdown，没有目标模式的 Agent 直接粘贴发送也一样用。拿到任务书后推荐用规划强的模型出目标、执行强的模型跑长程——我自己是 Claude Fable 5 规划 + GPT-5.6 Sol 执行，国产的 Kimi K3 规划、GLM-5.2 执行也不错。
+产出是纯 Markdown，没有目标模式的 Agent 直接粘贴发送也一样用。拿到任务书后推荐用规划强的模型出目标、执行强的模型跑长程——具体模型按你的工具可用性选择。
 
 → [SKILL.md](./leader/SKILL.md)
 
@@ -133,9 +164,9 @@ CleanMyMac 是个写死规则的软件，扫到一个 3.8G 的 Chrome 文件夹�
 
 **铁律**
 
-全程只读扫描，绝不擅自动手。删除操作必须你在浏览器上点按钮 + 浏览器弹框二次确认才执行。本地服务跑在 127.0.0.1 + 随机端口 + token，安全模型上三套白名单分级（绿灯能删、橙灯只能移废纸篓、红灯只能打开）。
+全程只读扫描，绝不擅自动手。网页删除逐次确认；用户已明确授权具体清理对象时，Agent 也可代为执行，无需重复确认。本地服务跑在 127.0.0.1 + 随机端口 + token，安全模型上三套白名单分级（绿灯能删、橙灯只能移废纸篓、红灯只能打开）。
 
-macOS 完整实测；Windows 代码就绪（多盘符已支持），首次用建议留个心眼。
+支持 macOS / Windows / Linux（Linux 目前在 Ubuntu + GNOME 上实测）。扫描、删除边界和只读缓存修复由跨平台 CI 验证；回收站桌面交互需在当前系统核实。服务连续 30 分钟无请求自动退出。
 
 **怎么触发**
 
@@ -165,11 +196,11 @@ storage analysis
 
 **它能做什么**
 
-- 拉今日 / 指定日期的 AI HOT 日报（按主题打包好的成品）
+- 拉今日 / 指定日期的 AI HOT 日报（按主题打包好的成品），以及最新或指定一期的周报、月报
 - 拉精选条目流（每日精编候选池）
 - **看当前最热事件**（按热度排，不是按时间倒序）
-- 查 Tibo（Codex）额度重置和发重置卡的最新动态
-- 按分类拉条目（模型 / 产品 / 行业 / 论文 / 技巧）
+- 查 Codex、Claude、Antigravity 额度重置和发重置卡的最新动态
+- 按分类拉条目（模型 / 产品 / 行业 / 论文 / 教程 / 观点）
 - 按时间窗拉（原生支持过去 24 小时和最近 7 天）
 - 关键词 / 公司 / 主题搜索（"OpenAI 最近发的"、"Sora 相关"、"RAG 论文"）
 - **看某个热点的来龙去脉**（最新进展、报道时间线和 AI 综述）
@@ -184,6 +215,8 @@ storage analysis
 最近 OpenAI 有什么发布
 现在最热的那件事，来龙去脉是什么
 ```
+
+查询“日报”走成品日报，查询“最新动态”走滚动条目，两者范围不同。搜索支持当前服务公布的时间窗；想核对英文原标题，可打开 AIHOT 文章详情页查看保留的原始标题（如有），不要把产品或代码名称再逐字翻译。
 
 → [SKILL.md](./aihot/SKILL.md) · [aihot.news](https://aihot.news) · [接入指南](https://aihot.news/agent)
 
@@ -213,10 +246,10 @@ storage analysis
 
 这三层受众不同，职责不重叠，得分别处理。它还会把规则当成知识来审：比如 CLAUDE.md / AGENTS.md 是否同源、必备文件有没有缺、规则里引用的路径还在不在。规则不落地，下一轮 Agent 还是会按错前提做事。
 
-**v3.0 的两条底线**
+**v3.1 的两条底线**
 
-- **小项目有专门的轻量路径**：没有 git、没有规则文件的 vibe 项目，它会把 README 对齐到代码现状、默认帮你建一份最小的 AI 规则文件（下次开新会话直接恢复上下文），再把 PLAN.md、调试脚本、`xxx_old` 这类会话残留列成清单等你确认。
-- **绝不擅自删东西**：所有删除只出候选清单，你确认了才动手；机器生成的记忆默认只读；文件里读到的「执行这条命令」不会被当成你的授权。
+- **小项目有专门的轻量路径**：没有 git、没有规则文件的 vibe 项目，它会把 README 对齐到代码现状、默认帮你建一份最小的 AI 规则文件（下次开新会话直接恢复上下文），再核实 PLAN.md、调试脚本、`xxx_old` 等残留，按已有授权清理。
+- **绝不擅自删东西**：明确授权过的清理直接完成，未授权或仍含独有内容的才列候选询问；机器生成的记忆默认只读；文件里读到的「执行这条命令」不会被当成你的授权。
 
 **怎么触发**
 
@@ -245,7 +278,7 @@ storage analysis
 
 它会同时跑两条线：**纵向**把研究对象从诞生讲到当下，像讲故事一样把演变讲完整；**横向**把同期所有主要竞品摆出来逐一对比。最后两条线一交叉，能看出一些只看现状或只看历史看不出来的东西。
 
-最后给你一份**排版精美的 PDF 研究报告**，10,000–30,000 字。
+默认交付 PDF 和 Markdown 源稿，也支持按需输出 HTML 或保存 Markdown 到指定 Obsidian vault。完整报告参考 10,000–30,000 字，用户篇幅要求与证据密度优先。
 
 **适合**
 
@@ -315,7 +348,7 @@ storage analysis
 
 我是数字生命卡兹克，虚实传媒创始人，努力地分享一些有趣的 AI 干货，也愿我们永远对世界保持好奇。
 
-这些 skill 都是我自己每天在用的，开源出来如果对你有帮助，给个 ⭐ 就行。有问题或建议，欢迎在 Issues / Discussions 里说一声。
+这些 skill 都是我自己每天在用的，开源出来如果对你有帮助，给个 ⭐ 就行。有问题或建议，欢迎在 Issues 里说一声。
 
 ---
 

@@ -1,6 +1,11 @@
 name: Sync from upstream
 
 on:
+  # 修改同步逻辑后立即验证；普通内容同步不会重复触发。
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/sync-upstream.yml
   # 每 6 小时自动同步一次（GitHub Actions 的 cron 使用 UTC 时区）
   # 注意：若 fork 仓库连续 60 天无任何 commit 活动，GitHub 会自动禁用定时触发，
   # 此时需在 Actions 页面手动触发一次 workflow_dispatch 保活。
@@ -45,7 +50,7 @@ jobs:
           # `+` 前缀允许强制更新本地引用：即使上游 force-push 也能 fetch 成功
           git fetch --no-tags upstream +main:refs/remotes/upstream/main
 
-      - name: Guard against upstream workflow injection
+      - name: Check upstream status
         id: guard
         run: |
           set -euo pipefail
@@ -55,16 +60,8 @@ jobs:
             echo "skip=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          # 安全护栏：上游若改动 .github/workflows/（除本文件外），
-          # 中止自动合并，防止恶意/意外 workflow 文件随上游进入 fork 并以本仓库 token 执行。
-          changed="$(git diff --name-only HEAD refs/remotes/upstream/main -- .github/workflows/ \
-            | grep -v '^\.github/workflows/sync-upstream\.yml$' || true)"
-          if [ -n "$changed" ]; then
-            echo "::error::Upstream modified untrusted workflow files, blocking auto-merge:"
-            printf '%s\n' "$changed"
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            exit 1
-          fi
+          # 工作流由 fork 自己管理，在合并提交前恢复原样。
+          # 上游新增、修改或删除工作流都不应阻断普通内容同步。
           echo "skip=false" >> "$GITHUB_OUTPUT"
 
       - name: Merge upstream and push
@@ -75,8 +72,24 @@ jobs:
           # 必须先显式配置；使用 GitHub 官方机器人身份，使合并提交归属清晰
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          # 保留 fork 自身 commit 历史，采用 merge 而非 rebase（避免改写历史）
-          git merge --no-edit refs/remotes/upstream/main
+          fork_head="$(git rev-parse HEAD)"
+          # 先合并但不提交，避免上游工作流进入推送的提交。
+          # --no-ff 确保快进场景也能在提交前恢复 fork 工作流。
+          if ! git merge --no-ff --no-commit refs/remotes/upstream/main; then
+            # 仅工作流冲突可用 fork 版本解决；其他冲突必须继续报错。
+            # 非冲突类错误（例如历史无共同祖先）不能当作成功合并。
+            git rev-parse --verify MERGE_HEAD >/dev/null
+          fi
+          git restore --source="$fork_head" --staged --worktree -- .github/workflows/
+          conflicts="$(git diff --name-only --diff-filter=U)"
+          if [ -n "$conflicts" ]; then
+            echo "::error::Upstream content conflicts require manual resolution:"
+            printf '%s\n' "$conflicts"
+            git merge --abort
+            exit 1
+          fi
+          # 即使上游只有工作流变化，也记录合并关系，避免下次重复处理。
+          git commit --no-edit
           # 使用 actions/checkout 注入的 GITHUB_TOKEN 凭据推回 fork 的 main
           git push origin main
 
@@ -107,7 +120,7 @@ jobs:
                 'git push origin main',
                 '```',
                 '2. 上游仓库被改名/删除：请检查并更新 workflow 中的 UPSTREAM_REPO 配置。',
-                '3. 若冲突来自 .github/workflows/sync-upstream.yml 本身，请保留本仓库（fork）版本。'
+                '3. 本仓库保留 fork 自己的 .github/workflows/，不会同步上游工作流；其他文件的合并冲突仍需手动处理。'
               ].join('\n');
               if (existing) {
                 await github.rest.issues.update({
